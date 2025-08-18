@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Podcast {
+  id                     Int       @id @default(autoincrement())
+  trackId                Int       @unique
+  trackName              String
+  artistName             String
+  collectionName         String?
+  trackViewUrl           String
+  artworkUrl30           String?
+  artworkUrl60           String?
+  artworkUrl100          String?
+  collectionPrice        Float?
+  trackPrice             Float?
+  releaseDate            DateTime?
+  collectionExplicitness String?
+  trackExplicitness      String?
+  trackCount             Int?
+  country                String
+  currency               String?
+  primaryGenreName       String?
+  contentAdvisoryRating  String?
+  feedUrl                String?
+  genres                 String[]
+  searchKeyword          String
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@map("podcasts")
+}
