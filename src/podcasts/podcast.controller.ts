@@ -2,7 +2,6 @@ import {
     Controller,
     Get,
     Post,
-    Delete,
     Body,
     Param,
     ParseIntPipe,
@@ -105,14 +104,5 @@ import {
       return this.podcastService.getPodcastById(id);
     }
   
-    @Delete(':id')
-    @HttpCode(HttpStatus.NO_CONTENT)
-    @ApiOperation({ summary: 'Delete a podcast by ID' })
-    @ApiParam({ name: 'id', description: 'Podcast ID' })
-    @ApiResponse({ status: 204, description: 'Podcast deleted successfully' })
-    @ApiResponse({ status: 404, description: 'Podcast not found' })
-    async deletePodcast(@Param('id', ParseIntPipe) id: number) {
-      await this.podcastService.deletePodcast(id);
-    }
   }
   

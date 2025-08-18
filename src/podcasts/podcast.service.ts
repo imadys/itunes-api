@@ -217,9 +217,4 @@ export class PodcastService {
     });
   }
 
-  async deletePodcast(id: number): Promise<void> {
-    await this.prisma.podcast.delete({
-      where: { id },
-    });
-  }
 }
