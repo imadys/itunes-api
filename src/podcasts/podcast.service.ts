@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { ItunesService } from './itunes.service';
-import { ItunesResult } from './interfaces/itunes-response.interface';
+import { ItunesService } from '../itunes/itunes.service';
+import { ItunesResult } from '../itunes/interfaces/itunes-response.interface';
 import { Podcast } from 'generated/prisma';
 
 @Injectable()

@@ -18,6 +18,7 @@ model Podcast {
   artworkUrl30           String?
   artworkUrl60           String?
   artworkUrl100          String?
+  artworkUrl600          String?
   collectionPrice        Float?
   trackPrice             Float?
   releaseDate            DateTime?
@@ -34,5 +35,32 @@ model Podcast {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
+  // Relations
+  episodes               Episode[]
+
   @@map("podcasts")
+}
+
+model Episode {
+  id               Int       @id @default(autoincrement())
+  title            String
+  description      String?
+  enclosureUrl     String?
+  enclosureType    String?
+  enclosureLength  Int?
+  pubDate          DateTime?
+  duration         String?
+  explicit         Boolean?  @default(false)
+  episodeNumber    Int?
+  seasonNumber     Int?
+  episodeType      String?   // full, trailer, bonus
+  image            String?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  // Relations
+  podcastId        Int
+  podcast          Podcast   @relation(fields: [podcastId], references: [id], onDelete: Cascade)
+
+  @@map("episodes")
 }
