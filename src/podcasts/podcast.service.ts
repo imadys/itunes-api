@@ -10,7 +10,7 @@ export class PodcastService {
 
   constructor(
     private readonly prisma: PrismaService,
-    private readonly itunesService: ItunesService,
+    private readonly itunes: ItunesService,
   ) {}
 
   async searchAndStorePodcasts(keyword: string): Promise<{
@@ -22,7 +22,7 @@ export class PodcastService {
   }> {
     try {
       // Search iTunes API
-      const itunesResponse = await this.itunesService.searchPodcasts(keyword);
+      const itunesResponse = await this.itunes.searchPodcasts(keyword);
       
       if (itunesResponse.resultCount === 0) {
         return {
