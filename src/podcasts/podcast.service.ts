@@ -2,11 +2,13 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ItunesService } from '../itunes/itunes.service';
 import { ItunesResult } from '../itunes/interfaces/itunes-response.interface';
-import { Podcast } from 'generated/prisma';
+import { Podcast, Episode } from 'generated/prisma';
+import Parser from 'rss-parser';
 
 @Injectable()
 export class PodcastService {
   private readonly logger = new Logger(PodcastService.name);
+  private readonly parser = new Parser();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -23,7 +25,7 @@ export class PodcastService {
     try {
       // Search iTunes API
       const itunesResponse = await this.itunes.searchPodcasts(keyword);
-      
+
       if (itunesResponse.resultCount === 0) {
         return {
           message: `No podcasts found for keyword: ${keyword}`,
@@ -35,8 +37,11 @@ export class PodcastService {
       }
 
       // Process and store results
-      const results = await this.processPodcastResults(itunesResponse.results, keyword);
-      
+      const results = await this.processPodcastResults(
+        itunesResponse.results,
+        keyword,
+      );
+
       return {
         message: `Successfully processed ${itunesResponse.resultCount} podcasts for keyword: ${keyword}`,
         totalFound: itunesResponse.resultCount,
@@ -45,12 +50,18 @@ export class PodcastService {
         data: results.podcasts,
       };
     } catch (error) {
-      this.logger.error(`Error in searchAndStorePodcasts: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error in searchAndStorePodcasts: ${error.message}`,
+        error.stack,
+      );
       throw error;
     }
   }
 
-  private async processPodcastResults(results: ItunesResult[], searchKeyword: string): Promise<{
+  private async processPodcastResults(
+    results: ItunesResult[],
+    searchKeyword: string,
+  ): Promise<{
     podcasts: Podcast[];
     newCount: number;
     existingCount: number;
@@ -74,7 +85,6 @@ export class PodcastService {
           });
           podcasts.push(updatedPodcast);
           existingCount++;
-          this.logger.log(`Updated existing podcast: ${result.trackName}`);
         } else {
           // Create new podcast
           const newPodcast = await this.prisma.podcast.create({
@@ -82,10 +92,11 @@ export class PodcastService {
           });
           podcasts.push(newPodcast);
           newCount++;
-          this.logger.log(`Created new podcast: ${result.trackName}`);
         }
       } catch (error) {
-        this.logger.error(`Error processing podcast ${result.trackId}: ${error.message}`);
+        this.logger.error(
+          `Error processing podcast ${result.trackId}: ${error.message}`,
+        );
         // Continue processing other podcasts
         continue;
       }
@@ -94,7 +105,10 @@ export class PodcastService {
     return { podcasts, newCount, existingCount };
   }
 
-  private mapItunesResultToPodcast(result: ItunesResult, searchKeyword: string) {
+  private mapItunesResultToPodcast(
+    result: ItunesResult,
+    searchKeyword: string,
+  ) {
     return {
       trackId: result.trackId,
       trackName: result.trackName,
@@ -121,7 +135,10 @@ export class PodcastService {
     };
   }
 
-  async getAllPodcasts(page: number = 1, limit: number = 10): Promise<{
+  async getAllPodcasts(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
     data: Podcast[];
     pagination: {
       page: number;
@@ -134,12 +151,11 @@ export class PodcastService {
 
     // If no podcasts found, automatically search for "thmanyah" and return results
     if (totalPodcasts === 0) {
-      this.logger.log('No podcasts found in database, searching iTunes for "thmanyah"');
       const searchResult = await this.searchAndStorePodcasts('thmanyah');
       const total = searchResult.data.length;
       const skip = (page - 1) * limit;
       const paginatedPodcasts = searchResult.data.slice(skip, skip + limit);
-      
+
       return {
         data: paginatedPodcasts,
         pagination: {
@@ -169,7 +185,11 @@ export class PodcastService {
     };
   }
 
-  async getPodcastsByKeyword(keyword: string, page: number = 1, limit: number = 10): Promise<{
+  async getPodcastsByKeyword(
+    keyword: string,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
     data: Podcast[];
     pagination: {
       page: number;
@@ -212,9 +232,99 @@ export class PodcastService {
   }
 
   async getPodcastById(id: number): Promise<Podcast | null> {
-    return this.prisma.podcast.findUnique({
+    const podcast = await this.prisma.podcast.findUnique({
       where: { id },
     });
+
+    if (podcast && podcast.feedUrl) {
+      await this.fetchAndSaveEpisodes(podcast.id, podcast.feedUrl);
+    }
+
+    return podcast;
   }
 
+  async fetchAndSaveEpisodes(
+    podcastId: number,
+    feedUrl: string,
+  ): Promise<void> {
+    try {
+      const feed = await this.parser.parseURL(feedUrl);
+
+      for (const item of feed.items) {
+        if (!item.title || !item.pubDate) continue;
+
+        const existingEpisode = await this.prisma.episode.findFirst({
+          where: {
+            podcastId,
+            title: item.title,
+          },
+        });
+
+        if (!existingEpisode) {
+          await this.prisma.episode.create({
+            data: {
+              podcastId,
+              title: item.title,
+              audioUrl: item.enclosure?.url || null,
+              duration: item.itunes?.duration || null,
+              pubDate: new Date(item.pubDate),
+              description: item.contentSnippet || item.content || null,
+              episodeNumber: item.itunes?.episode
+                ? parseInt(item.itunes.episode)
+                : null,
+              episodeType: item.itunes?.episodeType || null,
+              image: item.itunes?.image || null,
+            },
+          });
+        }
+      }
+    } catch (error) {
+      this.logger.error(
+        `Error fetching episodes for podcast ${podcastId}: ${error.message}`,
+      );
+    }
+  }
+
+  async getEpisodesByPodcastId(
+    podcastId: number,
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: Episode[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
+    const totalEpisodes = await this.prisma.episode.count({
+      where: { podcastId },
+    });
+
+    const skip = (page - 1) * limit;
+    const episodes = await this.prisma.episode.findMany({
+      where: { podcastId },
+      skip,
+      take: limit,
+      orderBy: { pubDate: 'desc' },
+    });
+
+    return {
+      data: episodes,
+      pagination: {
+        page,
+        limit,
+        total: totalEpisodes,
+        pages: Math.ceil(totalEpisodes / limit),
+      },
+    };
+  }
+
+  async getEpisodeById(id: number): Promise<Episode | null> {
+    return this.prisma.episode.findUnique({
+      where: { id },
+      include: { podcast: true },
+    });
+  }
 }

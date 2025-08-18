@@ -11,7 +11,12 @@ export class ItunesService {
 
   constructor(private readonly httpService: HttpService) {}
 
-  async search(term: string, media?: string, entity?: string, limit: number = 50): Promise<ItunesSearchResponse> {
+  async search(
+    term: string,
+    media?: string,
+    entity?: string,
+    limit: number = 50,
+  ): Promise<ItunesSearchResponse> {
     try {
       const params: any = {
         term,
@@ -21,16 +26,16 @@ export class ItunesService {
       if (media) params.media = media;
       if (entity) params.entity = entity;
 
-      this.logger.log(`Searching iTunes for term: ${term}`);
-      
       const response = await firstValueFrom(
-        this.httpService.get<ItunesSearchResponse>(this.searchUrl, { params })
+        this.httpService.get<ItunesSearchResponse>(this.searchUrl, { params }),
       );
 
-      this.logger.log(`Found ${response.data.resultCount} results for term: ${term}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`Error searching iTunes API: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error searching iTunes API: ${error.message}`,
+        error.stack,
+      );
       throw new Error(`Failed to search iTunes API: ${error.message}`);
     }
   }
@@ -45,18 +50,17 @@ export class ItunesService {
         id,
       };
 
-      this.logger.log(`Looking up iTunes item with ID: ${id}`);
-      
       const response = await firstValueFrom(
-        this.httpService.get<ItunesSearchResponse>(this.lookupUrl, { params })
+        this.httpService.get<ItunesSearchResponse>(this.lookupUrl, { params }),
       );
 
-      this.logger.log(`Found ${response.data.resultCount} result(s) for ID: ${id}`);
       return response.data;
     } catch (error) {
-      this.logger.error(`Error looking up iTunes API: ${error.message}`, error.stack);
+      this.logger.error(
+        `Error looking up iTunes API: ${error.message}`,
+        error.stack,
+      );
       throw new Error(`Failed to lookup iTunes API: ${error.message}`);
     }
   }
 }
-
