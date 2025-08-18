@@ -121,9 +121,17 @@ export class PodcastService {
   }
 
   async getAllPodcasts(): Promise<Podcast[]> {
-    return this.prisma.podcast.findMany({
+    const podcasts = await this.prisma.podcast.findMany({
       orderBy: { createdAt: 'desc' },
     });
+
+    if (podcasts.length === 0) {
+      this.logger.log('No podcasts found in database, searching iTunes for "thmanyah"');
+      const searchResult = await this.searchAndStorePodcasts('thmanyah');
+      return searchResult.podcasts;
+    }
+
+    return podcasts;
   }
 
   async getPodcastsByKeyword(keyword: string): Promise<Podcast[]> {
