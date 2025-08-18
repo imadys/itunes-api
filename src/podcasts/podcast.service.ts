@@ -18,7 +18,7 @@ export class PodcastService {
     totalFound: number;
     newPodcasts: number;
     existingPodcasts: number;
-    podcasts: Podcast[];
+    data: Podcast[];
   }> {
     try {
       // Search iTunes API
@@ -30,7 +30,7 @@ export class PodcastService {
           totalFound: 0,
           newPodcasts: 0,
           existingPodcasts: 0,
-          podcasts: [],
+          data: [],
         };
       }
 
@@ -42,7 +42,7 @@ export class PodcastService {
         totalFound: itunesResponse.resultCount,
         newPodcasts: results.newCount,
         existingPodcasts: results.existingCount,
-        podcasts: results.podcasts,
+        data: results.podcasts,
       };
     } catch (error) {
       this.logger.error(`Error in searchAndStorePodcasts: ${error.message}`, error.stack);
@@ -104,6 +104,7 @@ export class PodcastService {
       artworkUrl30: result.artworkUrl30 || null,
       artworkUrl60: result.artworkUrl60 || null,
       artworkUrl100: result.artworkUrl100 || null,
+      artworkUrl600: result.artworkUrl600 || null,
       collectionPrice: result.collectionPrice || null,
       trackPrice: result.trackPrice || null,
       releaseDate: result.releaseDate ? new Date(result.releaseDate) : null,
@@ -120,30 +121,94 @@ export class PodcastService {
     };
   }
 
-  async getAllPodcasts(): Promise<Podcast[]> {
+  async getAllPodcasts(page: number = 1, limit: number = 10): Promise<{
+    data: Podcast[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
+    const totalPodcasts = await this.prisma.podcast.count();
+
+    // If no podcasts found, automatically search for "thmanyah" and return results
+    if (totalPodcasts === 0) {
+      this.logger.log('No podcasts found in database, searching iTunes for "thmanyah"');
+      const searchResult = await this.searchAndStorePodcasts('thmanyah');
+      const total = searchResult.data.length;
+      const skip = (page - 1) * limit;
+      const paginatedPodcasts = searchResult.data.slice(skip, skip + limit);
+      
+      return {
+        data: paginatedPodcasts,
+        pagination: {
+          page,
+          limit,
+          total,
+          pages: Math.ceil(total / limit),
+        },
+      };
+    }
+
+    const skip = (page - 1) * limit;
     const podcasts = await this.prisma.podcast.findMany({
+      skip,
+      take: limit,
       orderBy: { createdAt: 'desc' },
     });
 
-    if (podcasts.length === 0) {
-      this.logger.log('No podcasts found in database, searching iTunes for "thmanyah"');
-      const searchResult = await this.searchAndStorePodcasts('thmanyah');
-      return searchResult.podcasts;
-    }
-
-    return podcasts;
+    return {
+      data: podcasts,
+      pagination: {
+        page,
+        limit,
+        total: totalPodcasts,
+        pages: Math.ceil(totalPodcasts / limit),
+      },
+    };
   }
 
-  async getPodcastsByKeyword(keyword: string): Promise<Podcast[]> {
-    return this.prisma.podcast.findMany({
+  async getPodcastsByKeyword(keyword: string, page: number = 1, limit: number = 10): Promise<{
+    data: Podcast[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
+    const totalPodcasts = await this.prisma.podcast.count({
       where: {
         searchKeyword: {
           contains: keyword,
           mode: 'insensitive',
         },
       },
+    });
+
+    const skip = (page - 1) * limit;
+    const podcasts = await this.prisma.podcast.findMany({
+      where: {
+        searchKeyword: {
+          contains: keyword,
+          mode: 'insensitive',
+        },
+      },
+      skip,
+      take: limit,
       orderBy: { createdAt: 'desc' },
     });
+
+    return {
+      data: podcasts,
+      pagination: {
+        page,
+        limit,
+        total: totalPodcasts,
+        pages: Math.ceil(totalPodcasts / limit),
+      },
+    };
   }
 
   async getPodcastById(id: number): Promise<Podcast | null> {

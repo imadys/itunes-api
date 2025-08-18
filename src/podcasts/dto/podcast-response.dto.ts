@@ -29,6 +29,9 @@ export class PodcastResponseDto {
   artworkUrl100?: string;
 
   @ApiProperty({ required: false })
+  artworkUrl600?: string;
+
+  @ApiProperty({ required: false })
   collectionPrice?: number;
 
   @ApiProperty({ required: false })

@@ -66,11 +66,30 @@ import {
       required: false,
       description: 'Filter podcasts by search keyword',
     })
-    async getAllPodcasts(@Query('keyword') keyword?: string) {
+    @ApiQuery({
+      name: 'page',
+      required: false,
+      description: 'Page number (default: 1)',
+      type: Number,
+    })
+    @ApiQuery({
+      name: 'limit',
+      required: false,
+      description: 'Number of items per page (default: 10)',
+      type: Number,
+    })
+    async getAllPodcasts(
+      @Query('keyword') keyword?: string,
+      @Query('page') page?: number,
+      @Query('limit') limit?: number,
+    ) {
+      const pageNum = page && page > 0 ? page : 1;
+      const limitNum = limit && limit > 0 ? Math.min(limit, 100) : 10;
+
       if (keyword) {
-        return this.podcastService.getPodcastsByKeyword(keyword);
+        return this.podcastService.getPodcastsByKeyword(keyword, pageNum, limitNum);
       }
-      return this.podcastService.getAllPodcasts();
+      return this.podcastService.getAllPodcasts(pageNum, limitNum);
     }
   
     @Get(':id')

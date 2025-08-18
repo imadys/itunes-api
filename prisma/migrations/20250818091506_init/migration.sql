@@ -9,6 +9,7 @@ CREATE TABLE "public"."podcasts" (
     "artworkUrl30" TEXT,
     "artworkUrl60" TEXT,
     "artworkUrl100" TEXT,
+    "artworkUrl600" TEXT,
     "collectionPrice" DOUBLE PRECISION,
     "trackPrice" DOUBLE PRECISION,
     "releaseDate" TIMESTAMP(3),
