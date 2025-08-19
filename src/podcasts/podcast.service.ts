@@ -237,4 +237,56 @@ export class PodcastService {
     });
   }
 
+  async togglePodcastFavorite(id: number): Promise<Podcast> {
+    const podcast = await this.prisma.podcast.findUnique({
+      where: { id },
+    });
+
+    if (!podcast) {
+      throw new Error(`Podcast with id ${id} not found`);
+    }
+
+    return this.prisma.podcast.update({
+      where: { id },
+      data: {
+        isFavorite: !podcast.isFavorite,
+      },
+    });
+  }
+
+  async getFavoritePodcasts(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: Podcast[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
+    const totalFavorites = await this.prisma.podcast.count({
+      where: { isFavorite: true },
+    });
+
+    const skip = (page - 1) * limit;
+    const favorites = await this.prisma.podcast.findMany({
+      where: { isFavorite: true },
+      skip,
+      take: limit,
+      orderBy: { updatedAt: 'desc' },
+    });
+
+    return {
+      data: favorites,
+      pagination: {
+        page,
+        limit,
+        total: totalFavorites,
+        pages: Math.ceil(totalFavorites / limit),
+      },
+    };
+  }
+
 }

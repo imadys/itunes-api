@@ -94,6 +94,60 @@ export class EpisodeService {
     });
   }
 
+  async toggleEpisodeFavorite(id: number): Promise<Episode> {
+    const episode = await this.prisma.episode.findUnique({
+      where: { id },
+    });
+
+    if (!episode) {
+      throw new Error(`Episode with id ${id} not found`);
+    }
+
+    return this.prisma.episode.update({
+      where: { id },
+      data: {
+        isFavorite: !episode.isFavorite,
+      },
+      include: { podcast: true },
+    });
+  }
+
+  async getFavoriteEpisodes(
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{
+    data: Episode[];
+    pagination: {
+      page: number;
+      limit: number;
+      total: number;
+      pages: number;
+    };
+  }> {
+    const totalFavorites = await this.prisma.episode.count({
+      where: { isFavorite: true },
+    });
+
+    const skip = (page - 1) * limit;
+    const favorites = await this.prisma.episode.findMany({
+      where: { isFavorite: true },
+      skip,
+      take: limit,
+      orderBy: { createdAt: 'desc' },
+      include: { podcast: true },
+    });
+
+    return {
+      data: favorites,
+      pagination: {
+        page,
+        limit,
+        total: totalFavorites,
+        pages: Math.ceil(totalFavorites / limit),
+      },
+    };
+  }
+
   async fetchAndSaveEpisodes(
     podcastId: number,
     feedUrl: string,

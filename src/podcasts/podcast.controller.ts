@@ -8,6 +8,7 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  NotFoundException,
 } from '@nestjs/common';
 import {
   ApiTags,
@@ -107,6 +108,55 @@ export class PodcastController {
   @ApiResponse({ status: 404, description: 'Podcast not found' })
   async getPodcastById(@Param('id', ParseIntPipe) id: number) {
     return this.podcastService.getPodcastById(id);
+  }
+
+  @Post(':id/favorite')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Toggle podcast favorite status' })
+  @ApiParam({ name: 'id', description: 'Podcast ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Podcast favorite status toggled successfully',
+    type: PodcastResponseDto,
+  })
+  @ApiResponse({ status: 404, description: 'Podcast not found' })
+  async togglePodcastFavorite(@Param('id', ParseIntPipe) id: number) {
+    try {
+      return await this.podcastService.togglePodcastFavorite(id);
+    } catch (error) {
+      if (error.message.includes('not found')) {
+        throw new NotFoundException(error.message);
+      }
+      throw error;
+    }
+  }
+
+  @Get('favorites')
+  @ApiOperation({ summary: 'Get all favorite podcasts' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of favorite podcasts',
+    type: [PodcastResponseDto],
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of items per page (default: 10)',
+    type: Number,
+  })
+  async getFavoritePodcasts(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const pageNum = page && page > 0 ? page : 1;
+    const limitNum = limit && limit > 0 ? Math.min(limit, 100) : 10;
+    return this.podcastService.getFavoritePodcasts(pageNum, limitNum);
   }
 
 }
