@@ -264,7 +264,8 @@ export class PodcastService {
               audioUrl: item.enclosure?.url || null,
               duration: item.itunes?.duration || null,
               pubDate: new Date(item.pubDate),
-              description: item.contentSnippet || item.content || null,
+              description: item.content || item.contentSnippet || null,
+              shortDescription: item.contentSnippet || null,
               episodeNumber: item.itunes?.episode
                 ? parseInt(item.itunes.episode)
                 : null,

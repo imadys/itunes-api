@@ -39,22 +39,23 @@ model Podcast {
 }
 
 model Episode {
-  id            Int       @id @default(autoincrement())
-  trackId       Int?      @unique
-  podcastId     Int
-  title         String
-  audioUrl      String?
-  duration      String?
-  pubDate       DateTime
-  description   String?
-  episodeNumber Int?
-  episodeType   String?
-  image         String?
+  id               Int       @id @default(autoincrement())
+  trackId          Int?      @unique
+  podcastId        Int
+  title            String
+  audioUrl         String?
+  duration         String?
+  pubDate          DateTime
+  description      String?
+  shortDescription String?
+  episodeNumber    Int?
+  episodeType      String?
+  image            String?
 
-  isFavorite    Boolean   @default(false)
-  podcast       Podcast   @relation(fields: [podcastId], references: [id])
+  isFavorite       Boolean   @default(false)
+  podcast          Podcast   @relation(fields: [podcastId], references: [id])
 
-  createdAt     DateTime  @default(now())
+  createdAt        DateTime  @default(now())
 
   @@map("episodes")
 }
