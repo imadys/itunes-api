@@ -97,6 +97,34 @@ export class PodcastController {
     return this.podcastService.getAllPodcasts(pageNum, limitNum);
   }
 
+  @Get('favorites')
+  @ApiOperation({ summary: 'Get all favorite podcasts' })
+  @ApiResponse({
+    status: 200,
+    description: 'List of favorite podcasts',
+    type: [PodcastResponseDto],
+  })
+  @ApiQuery({
+    name: 'page',
+    required: false,
+    description: 'Page number (default: 1)',
+    type: Number,
+  })
+  @ApiQuery({
+    name: 'limit',
+    required: false,
+    description: 'Number of items per page (default: 10)',
+    type: Number,
+  })
+  async getFavoritePodcasts(
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    const pageNum = page && page > 0 ? page : 1;
+    const limitNum = limit && limit > 0 ? Math.min(limit, 100) : 10;
+    return this.podcastService.getFavoritePodcasts(pageNum, limitNum);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a specific podcast by ID' })
   @ApiParam({ name: 'id', description: 'Podcast ID' })
@@ -129,34 +157,6 @@ export class PodcastController {
       }
       throw error;
     }
-  }
-
-  @Get('favorites')
-  @ApiOperation({ summary: 'Get all favorite podcasts' })
-  @ApiResponse({
-    status: 200,
-    description: 'List of favorite podcasts',
-    type: [PodcastResponseDto],
-  })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    description: 'Page number (default: 1)',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Number of items per page (default: 10)',
-    type: Number,
-  })
-  async getFavoritePodcasts(
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    const pageNum = page && page > 0 ? page : 1;
-    const limitNum = limit && limit > 0 ? Math.min(limit, 100) : 10;
-    return this.podcastService.getFavoritePodcasts(pageNum, limitNum);
   }
 
 }
