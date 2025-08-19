@@ -149,6 +149,8 @@ export class PodcastService {
   }> {
     const totalPodcasts = await this.prisma.podcast.count();
 
+    this.logger.log(`Total podcasts: ${totalPodcasts}`);
+
     // If no podcasts found, automatically search for "thmanyah" and return results
     if (totalPodcasts === 0) {
       const searchResult = await this.searchAndStorePodcasts('thmanyah');
@@ -232,15 +234,9 @@ export class PodcastService {
   }
 
   async getPodcastById(id: number): Promise<Podcast | null> {
-    const podcast = await this.prisma.podcast.findUnique({
+    return this.prisma.podcast.findUnique({
       where: { id },
     });
-
-    if (podcast && podcast.feedUrl) {
-      await this.fetchAndSaveEpisodes(podcast.id, podcast.feedUrl);
-    }
-
-    return podcast;
   }
 
   async fetchAndSaveEpisodes(
@@ -298,6 +294,21 @@ export class PodcastService {
       pages: number;
     };
   }> {
+    // Check if episodes exist for this podcast
+    const existingEpisodesCount = await this.prisma.episode.count({
+      where: { podcastId },
+    });
+
+    if (existingEpisodesCount === 0) {
+      const podcast = await this.prisma.podcast.findUnique({
+        where: { id: podcastId },
+      });
+
+      if (podcast && podcast.feedUrl) {
+        await this.fetchAndSaveEpisodes(podcastId, podcast.feedUrl);
+      }
+    }
+
     const totalEpisodes = await this.prisma.episode.count({
       where: { podcastId },
     });
