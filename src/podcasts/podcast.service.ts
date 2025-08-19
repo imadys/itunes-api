@@ -2,13 +2,11 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { ItunesService } from '../itunes/itunes.service';
 import { ItunesResult } from '../itunes/interfaces/itunes-response.interface';
-import { Podcast, Episode } from 'generated/prisma';
-import Parser from 'rss-parser';
+import { Podcast } from 'generated/prisma';
 
 @Injectable()
 export class PodcastService {
   private readonly logger = new Logger(PodcastService.name);
-  private readonly parser = new Parser();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -239,104 +237,4 @@ export class PodcastService {
     });
   }
 
-  async fetchAndSaveEpisodes(
-    podcastId: number,
-    feedUrl: string,
-  ): Promise<void> {
-    try {
-      const feed = await this.parser.parseURL(feedUrl);
-
-      for (const item of feed.items) {
-        if (!item.title || !item.pubDate) continue;
-
-        const existingEpisode = await this.prisma.episode.findFirst({
-          where: {
-            podcastId,
-            title: item.title,
-          },
-        });
-
-        if (!existingEpisode) {
-          await this.prisma.episode.create({
-            data: {
-              podcastId,
-              title: item.title,
-              audioUrl: item.enclosure?.url || null,
-              duration: item.itunes?.duration || null,
-              pubDate: new Date(item.pubDate),
-              description: item.content || item.contentSnippet || null,
-              shortDescription: item.contentSnippet || null,
-              episodeNumber: item.itunes?.episode
-                ? parseInt(item.itunes.episode)
-                : null,
-              episodeType: item.itunes?.episodeType || null,
-              image: item.itunes?.image || null,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      this.logger.error(
-        `Error fetching episodes for podcast ${podcastId}: ${error.message}`,
-      );
-    }
-  }
-
-  async getEpisodesByPodcastId(
-    podcastId: number,
-    page: number = 1,
-    limit: number = 10,
-  ): Promise<{
-    data: Episode[];
-    pagination: {
-      page: number;
-      limit: number;
-      total: number;
-      pages: number;
-    };
-  }> {
-    // Check if episodes exist for this podcast
-    const existingEpisodesCount = await this.prisma.episode.count({
-      where: { podcastId },
-    });
-
-    if (existingEpisodesCount === 0) {
-      const podcast = await this.prisma.podcast.findUnique({
-        where: { id: podcastId },
-      });
-
-      if (podcast && podcast.feedUrl) {
-        await this.fetchAndSaveEpisodes(podcastId, podcast.feedUrl);
-      }
-    }
-
-    const totalEpisodes = await this.prisma.episode.count({
-      where: { podcastId },
-    });
-
-    const skip = (page - 1) * limit;
-    const episodes = await this.prisma.episode.findMany({
-      where: { podcastId },
-      skip,
-      take: limit,
-      orderBy: { pubDate: 'desc' },
-    });
-
-    return {
-      data: episodes,
-      pagination: {
-        page,
-        limit,
-        total: totalEpisodes,
-        pages: Math.ceil(totalEpisodes / limit),
-      },
-    };
-  }
-
-  async getEpisodeById(id: number): Promise<Episode | null> {
-    return this.prisma.episode.findUnique({
-      where: { id },
-      include: { podcast: true },
-    });
-  }
 }

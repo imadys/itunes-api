@@ -109,33 +109,4 @@ export class PodcastController {
     return this.podcastService.getPodcastById(id);
   }
 
-  @Get(':id/episodes')
-  @ApiOperation({ summary: 'Get episodes for a specific podcast' })
-  @ApiParam({ name: 'id', description: 'Podcast ID' })
-  @ApiQuery({
-    name: 'page',
-    required: false,
-    description: 'Page number (default: 1)',
-    type: Number,
-  })
-  @ApiQuery({
-    name: 'limit',
-    required: false,
-    description: 'Number of items per page (default: 10)',
-    type: Number,
-  })
-  @ApiResponse({
-    status: 200,
-    description: 'List of episodes for the podcast',
-  })
-  @ApiResponse({ status: 404, description: 'Podcast not found' })
-  async getEpisodesByPodcastId(
-    @Param('id', ParseIntPipe) id: number,
-    @Query('page') page?: number,
-    @Query('limit') limit?: number,
-  ) {
-    const pageNum = page && page > 0 ? page : 1;
-    const limitNum = limit && limit > 0 ? Math.min(limit, 100) : 10;
-    return this.podcastService.getEpisodesByPodcastId(id, pageNum, limitNum);
-  }
 }
